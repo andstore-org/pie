@@ -140,6 +140,26 @@ fn get_installed_packages() -> Result<InstalledPackages, Box<dyn std::error::Err
     Ok(installed)
 }
 
+fn check_api_compatibility(package: &Package) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(min_api_str) = &package.min_api {
+        if min_api_str.trim().is_empty() {
+            return Ok(());
+        }
+        
+        let device_api = get_api_level()?;
+        let min_api: u32 = min_api_str.parse()
+            .map_err(|_| format!("Invalid min_api format: '{}'", min_api_str))?;
+        
+        if device_api < min_api {
+            return Err(format!(
+                "Package requires API level {} but device is API level {}", 
+                min_api, device_api
+            ).into());
+        }
+    }
+    Ok(())
+ }
+
 fn save_installed_packages(
     installed: &InstalledPackages,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -185,22 +205,7 @@ fn format_size(bytes: u64) -> String {
     }
 }
 
-fn check_api_compatibility(package: &Package) -> Result<(), Box<dyn std::error::Error>> {
-    if let Some(min_api_str) = &package.min_api {
-        let device_api = get_api_level()?;
-        let min_api: u32 = min_api_str
-            .parse()
-            .map_err(|_| format!("Invalid min_api format: {min_api_str}"))?;
 
-        if device_api < min_api {
-            return Err(format!(
-                "Package requires API level {min_api} but device is API level {device_api}"
-            )
-            .into());
-        }
-    }
-    Ok(())
-}
 
 fn resolve_dependencies(
     repo: &Repo,
