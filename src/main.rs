@@ -7,6 +7,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use tar::Archive;
 use zstd::stream::read::Decoder;
+use terminal_size::{Width, terminal_size};
 
 const ANDSTORE_ROOT: &str = "/data/local/andstore";
 const PIE_DATA: &str = "/data/adb/pie";
@@ -73,6 +74,15 @@ struct InstalledPackage {
 #[derive(Serialize, Deserialize, Default)]
 struct InstalledPackages {
     packages: HashMap<String, InstalledPackage>,
+}
+
+fn get_separator() -> String {
+    let width = if let Some((Width(w), _)) = terminal_size() {
+        w as usize
+    } else {
+        80 // fallback
+    };
+    "=".repeat(width.max(40).min(120)) // min 40, max 120 chars
 }
 
 fn main() {
@@ -205,8 +215,6 @@ fn format_size(bytes: u64) -> String {
     }
 }
 
-
-
 fn resolve_dependencies(
     repo: &Repo,
     package_name: &str,
@@ -260,9 +268,9 @@ fn handle_conflicts(
     }
 
     if !conflicts_to_remove.is_empty() {
-        println!("\n{}", "=".repeat(50));
+        println!("\n{}", get_separator());
         println!("CONFLICT RESOLUTION");
-        println!("{}", "=".repeat(50));
+        println!("{}", get_separator());
         println!("The following packages conflict and will be removed:");
         for conflict in &conflicts_to_remove {
             if let Some(pkg) = installed.packages.get(conflict) {
@@ -455,9 +463,9 @@ fn install_package(name: &str, no_confirm: bool) -> Result<(), Box<dyn std::erro
     }
 
     // Show installation summary
-    println!("\n{}", "=".repeat(60));
+    println!("\n{}", get_separator());
     println!("INSTALLATION SUMMARY");
-    println!("{}", "=".repeat(60));
+    println!("{}", get_separator());
 
     if !dependencies.is_empty() {
         println!("Dependencies to install ({}):", dependencies.len());
@@ -487,9 +495,9 @@ fn install_package(name: &str, no_confirm: bool) -> Result<(), Box<dyn std::erro
         }
     }
 
-    println!("\n{}", "=".repeat(60));
+    println!("\n{}", get_separator());
     println!("INSTALLING PACKAGES");
-    println!("{}", "=".repeat(60));
+    println!("{}", get_separator());
 
     // Install dependencies first
     for (i, dep) in dependencies.iter().enumerate() {
@@ -516,9 +524,9 @@ fn install_package(name: &str, no_confirm: bool) -> Result<(), Box<dyn std::erro
     // Save updated installed packages
     save_installed_packages(&installed)?;
 
-    println!("{}", "=".repeat(60));
+    println!("{}", get_separator());
     println!("Installation completed successfully!");
-    println!("{}", "=".repeat(60));
+    println!("{}", get_separator());
 
     Ok(())
 }
@@ -560,9 +568,9 @@ fn uninstall_package(name: &str) -> Result<(), Box<dyn std::error::Error>> {
         .get(&target_package)
         .ok_or(format!("Package '{target_package}' is not installed"))?;
 
-    println!("\n{}", "=".repeat(50));
+    println!("\n{}", get_separator());
     println!("REMOVING PACKAGE");
-    println!("{}", "=".repeat(50));
+    println!("{}", get_separator());
     println!("Package: {} v{}", target_package, package.version);
     print!("Removing files... ");
     io::stdout().flush()?;
@@ -576,7 +584,7 @@ fn uninstall_package(name: &str) -> Result<(), Box<dyn std::error::Error>> {
 
     println!("✓");
     println!("Successfully removed {target_package}");
-    println!("{}", "=".repeat(50));
+    println!("{}", get_separator());
 
     Ok(())
 }
