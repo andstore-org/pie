@@ -47,6 +47,21 @@ jobs:
         run: |
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
           echo "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+          sudo ln -sf $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.clang_target }} $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.arch }}-linux-android-clang
+        
+          echo "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+
+          if [ "${{ matrix.arch }}" = "x86" ]; then
+            echo "CC_i686_linux_android=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.clang_target }}" >> $GITHUB_ENV
+            echo "AR_i686_linux_android=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar" >> $GITHUB_ENV
+            sudo ln -sf $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.clang_target }} $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android-clang
+          fi
+
+          if [ "${{ matrix.arch }}" = "armv7" ]; then
+            echo "CC_arm_linux_androideabi=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.clang_target }}" >> $GITHUB_ENV
+            sudo ln -sf $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.clang_target }} $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/arm-linux-androideabi-clang
+            sudo ln -sf $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.clang_target }} $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7-linux-androideabi-clang
+          fi
           
           mkdir -p .cargo
           cat > .cargo/config.toml << EOF
