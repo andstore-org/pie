@@ -39,8 +39,7 @@ EOF
 
 cd "$SCRIPT_DIR"
 
-#for arch in arm64-v8a armeabi-v7a x86 x86_64; do
-for arch in armeabi-v7a x86 x86_64; do
+for arch in arm64-v8a armeabi-v7a x86 x86_64; do
     api=21
     build "$arch" "$api"
 done
