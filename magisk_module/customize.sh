@@ -10,7 +10,7 @@ mkdir -p "${PATH}/lib"
 
 echo "$ARCH" | grep -q "64" && mkdir -p "$PATH/lib64"
 
-cp "${MODPATH}/bins/pie-${ARCH}" "${MODPATH}/system/bin/"
+cp "${MODPATH}/bins/pie-${ARCH}" "${MODPATH}/system/bin/pie"
 
 [ -f /system/etc/mkshrc ] && mkdir -p "${MODPATH}/system/etc" && cp "/system/etc/mkshrc" "${MODPATH}/system/etc/"
 
@@ -20,6 +20,6 @@ for libdir in "$PATH/lib" "$PATH/lib64"; do
     [ -d "$libdir" ] && grep -q "$libdir" "$MKSHRC" || echo "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:${libdir}" >> "$MKSHRC"
 done
 
-rm -rf bins
+rm -rf ${MODPATH}/bins
 
 set_perm_recursive $MODPATH/system 0 0 0755 0644
