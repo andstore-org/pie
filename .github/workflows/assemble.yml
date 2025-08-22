@@ -1,0 +1,115 @@
+name: Assemble
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [aarch64, armv7, x86_64, x86]
+        include:
+          - arch: aarch64
+            target: aarch64-linux-android
+            android_abi: arm64-v8a
+            clang_target: aarch64-linux-android21-clang
+          - arch: armv7
+            target: armv7-linux-androideabi
+            android_abi: armeabi-v7a
+            clang_target: armv7a-linux-androideabi21-clang
+          - arch: x86_64
+            target: x86_64-linux-android
+            android_abi: x86_64
+            clang_target: x86_64-linux-android21-clang
+          - arch: x86
+            target: i686-linux-android
+            android_abi: x86
+            clang_target: i686-linux-android21-clang
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: set up rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          target: ${{ matrix.target }}
+
+      - name: Install Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27d
+          add-to-path: true
+
+      - name: env setup
+        run: |
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
+          echo "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+          
+          mkdir -p .cargo
+          cat > .cargo/config.toml << EOF
+          [target.${{ matrix.target }}]
+          linker = "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.clang_target }}"
+          EOF
+
+      - name: Build for ${{ matrix.arch }}
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+
+      - name: check bin
+        run: |
+          file target/${{ matrix.target }}/release/pie
+          ls -lh target/${{ matrix.target }}/release/pie
+
+      - name: upload bin
+        uses: actions/upload-artifact@v4
+        with:
+          name: pie-android-${{ matrix.android_abi }}
+          path: target/${{ matrix.target }}/release/pie
+          if-no-files-found: error
+
+  pack-module:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Get commit hash
+        id: get_commit
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      
+      - name: Create module
+        run: |
+          
+          mkdir -p magisk_module/bins
+      
+      - name: download bins
+        uses: actions/download-artifact@v4
+        with:
+          path: binaries
+          
+      - name: assemble magisk module
+        run: |
+          mkdir -p module/uncommon
+          cp binaries/pie-android-arm64-v8a/pie magisk_module/bins/pie-arm64-v8a
+          cp binaries/pie-android-armeabi-v7a/pie magisk_module/bins/pie-armeabi-v7a
+          cp binaries/pie-android-x86/pie magisk_module/bins/pie-x86
+          cp binaries/pie-android-x86_64/pie magisk_module/bins/pie-x86_64
+          
+          chmod +x magisk_module/bins/pie*
+          if [ -f magisk_module/module.prop ]; then
+            sed -i "s/^version=.*/version=gh-actions-${{ steps.get_commit.outputs.SHORT_SHA }}/" magisk_module/module.prop
+            sed -i '/^updateJson=/d' magisk_module/module.prop
+          fi
+          rm -f magisk_module/build.sh
+          
+          echo "MODULE_VERSION=gh-actions-${{ steps.get_commit.outputs.SHORT_SHA }}" >> $GITHUB_ENV
+      
+      - name: upload module
+        uses: actions/upload-artifact@v4
+        with:
+          name: pie-${{ env.MODULE_VERSION }}
+          path: magisk_module/
+          if-no-files-found: error
